@@ -1,0 +1,10 @@
+[package]
+name = "queries"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+queries-derive = { version = "0.1.0", path = "../queries-derive" }
+sqlx = "0.8.3"

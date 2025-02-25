@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = ["crates/queries", "crates/queries-derive"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
+edition = "2024"
+# This specifies the MSRV
+rust-version = "1.85.0"
+
