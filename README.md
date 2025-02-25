@@ -41,11 +41,15 @@ let (name, age) = q.get_name_age_by_id(1).await?;
 - Even though the user write `trait`, the generated code is actually a `struct`
   which provides the documented APIs. (The generated `struct` will be
   parameterized by `sqlx::Executor`).
+  - Queries does not provide any of its own transactions APIs. You can pass a
+    `Connection` to `new()` where the `Connection` already has an open
+    transaction to use it in such a way.
 - Functions can return either a single row (any type that implements
-  `sqlx::FromRow`), a `Vec<>` of rows, or an `Iterator<>` of rows.
+  `sqlx::FromRow`), a `Vec<>` of rows, or an `futures::Stream<>` of rows.
   - If a query returns a single row, an error will be returned if the query
     does not return exactly one row from the database.
   - Queries can return `Option<T>` in which case `None` will be returned if
     there are no rows. (An error will still be returned if multiple rows are
     returned from the database).
+  - This is done using the `queries::FromRows` trait.
 - Arguments can be any types that implement `sqlx::Encode` and `sqlx::Type`.
