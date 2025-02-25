@@ -43,4 +43,9 @@ let (name, age) = q.get_name_age_by_id(1).await?;
   parameterized by `sqlx::Executor`).
 - Functions can return either a single row (any type that implements
   `sqlx::FromRow`), a `Vec<>` of rows, or an `Iterator<>` of rows.
+  - If a query returns a single row, an error will be returned if the query
+    does not return exactly one row from the database.
+  - Queries can return `Option<T>` in which case `None` will be returned if
+    there are no rows. (An error will still be returned if multiple rows are
+    returned from the database).
 - Arguments can be any types that implement `sqlx::Encode` and `sqlx::Type`.
