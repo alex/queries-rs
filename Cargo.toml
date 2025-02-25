@@ -5,7 +5,7 @@ members = ["crates/queries", "crates/queries-derive"]
 [workspace.package]
 version = "0.1.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
+license = "BSD-3-Clause"
 edition = "2024"
 # This specifies the MSRV
 rust-version = "1.85.0"
-
