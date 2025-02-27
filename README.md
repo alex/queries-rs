@@ -8,7 +8,7 @@ A basic example of how to declare queries looks like:
 
 ```rust
 
-#[queries::queries]
+#[queries::queries(database = sqlx::Sqlite)]
 trait MyQueries {
     #[query = "SELECT 1"]
     async fn get1() -> (i32,);
@@ -24,8 +24,8 @@ trait MyQueries {
 And then to use them:
 
 ```rust
-let sql_executor = todo!()
-let q = MyQueries::new(sql_executor);
+let connection_pool = todo!()
+let q = MyQueries::new(connection_pool);
 
 let (one,) = q.get1().await?;
 assert_eq!(one, 1);
@@ -39,11 +39,7 @@ let (name, age) = q.get_name_age_by_id(1).await?;
 - Functions don't need to be annotated as returning a `Result<>`, that's done
   automatically.
 - Even though the user write `trait`, the generated code is actually a `struct`
-  which provides the documented APIs. (The generated `struct` will be
-  parameterized by `sqlx::Executor`).
-  - Queries does not provide any of its own transactions APIs. You can pass a
-    `Connection` to `new()` where the `Connection` already has an open
-    transaction to use it in such a way.
+  which provides the documented APIs.
 - Functions can return either a single row (any type that implements
   `sqlx::FromRow`), a `Vec<>` of rows, or an `futures::Stream<>` of rows.
   - If a query returns a single row, an error will be returned if the query
