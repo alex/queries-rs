@@ -11,6 +11,9 @@ trait BasicQueries {
 
     #[query = "SELECT 1 WHERE ?"]
     async fn get1_conditionally(arg: bool) -> Option<(i32,)>;
+
+    #[query = "SELECT 1 UNION SELECT 2 UNION SELECT 3"]
+    async fn get_numbers_stream() -> futures::stream::BoxStream<sqlx::Result<(i32,)>>;
 }
 
 #[tokio::test]

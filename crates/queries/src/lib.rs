@@ -6,6 +6,7 @@ pub use queries_derive::queries;
 const BASE: u32 = 0;
 const VEC: u32 = 1;
 const OPTION: u32 = 2;
+const STREAM: u32 = 3;
 #[doc(hidden)]
 pub trait Probe {
     const VALUE: u32 = BASE;
@@ -19,23 +20,26 @@ impl<T> FromRowsCategory<Vec<T>> {
 impl<T> FromRowsCategory<Option<T>> {
     pub const VALUE: u32 = OPTION;
 }
+impl<T> FromRowsCategory<futures::stream::BoxStream<'_, T>> {
+    pub const VALUE: u32 = STREAM;
+}
 
-pub trait FromRows<DB, const CATEGORY: u32>: Sized
+pub trait FromRows<'a, DB, const CATEGORY: u32>: Sized
 where
     DB: sqlx::Database,
 {
-    async fn from_rows<'e>(
-        rows: futures::stream::BoxStream<'e, Result<DB::Row, sqlx::Error>>,
+    async fn from_rows(
+        rows: futures::stream::BoxStream<'a, Result<DB::Row, sqlx::Error>>,
     ) -> Result<Self, sqlx::Error>;
 }
 
-impl<DB, T> FromRows<DB, { BASE }> for T
+impl<DB, T> FromRows<'_, DB, { BASE }> for T
 where
     DB: sqlx::Database,
     T: for<'a> sqlx::FromRow<'a, DB::Row>,
 {
-    async fn from_rows<'e>(
-        mut rows: futures::stream::BoxStream<'e, Result<DB::Row, sqlx::Error>>,
+    async fn from_rows(
+        mut rows: futures::stream::BoxStream<'_, Result<DB::Row, sqlx::Error>>,
     ) -> Result<Self, sqlx::Error> {
         let Some(row) = rows.next().await.transpose()? else {
             return Err(sqlx::Error::RowNotFound);
@@ -48,13 +52,13 @@ where
     }
 }
 
-impl<DB, T> FromRows<DB, { OPTION }> for Option<T>
+impl<DB, T> FromRows<'_, DB, { OPTION }> for Option<T>
 where
     DB: sqlx::Database,
     T: for<'a> sqlx::FromRow<'a, DB::Row>,
 {
-    async fn from_rows<'e>(
-        mut rows: futures::stream::BoxStream<'e, Result<DB::Row, sqlx::Error>>,
+    async fn from_rows(
+        mut rows: futures::stream::BoxStream<'_, Result<DB::Row, sqlx::Error>>,
     ) -> Result<Self, sqlx::Error> {
         let Some(row) = rows.next().await.transpose()? else {
             return Ok(None);
@@ -67,18 +71,30 @@ where
     }
 }
 
-impl<DB, T> FromRows<DB, { VEC }> for Vec<T>
+impl<DB, T> FromRows<'_, DB, { VEC }> for Vec<T>
 where
     DB: sqlx::Database,
     T: for<'a> sqlx::FromRow<'a, DB::Row>,
 {
-    async fn from_rows<'e>(
-        mut rows: futures::stream::BoxStream<'e, Result<DB::Row, sqlx::Error>>,
+    async fn from_rows(
+        mut rows: futures::stream::BoxStream<'_, Result<DB::Row, sqlx::Error>>,
     ) -> Result<Self, sqlx::Error> {
         let mut result = vec![];
         while let Some(row) = rows.next().await.transpose()? {
             result.push(T::from_row(&row)?);
         }
         Ok(result)
+    }
+}
+
+impl<'a, DB, T> FromRows<'a, DB, { STREAM }> for futures::stream::BoxStream<'a, sqlx::Result<T>>
+where
+    DB: sqlx::Database,
+    T: for<'b> sqlx::FromRow<'b, DB::Row>,
+{
+    async fn from_rows(
+        rows: futures::stream::BoxStream<'a, Result<DB::Row, sqlx::Error>>,
+    ) -> Result<Self, sqlx::Error> {
+        Ok(rows.map(|r| r.and_then(|row| T::from_row(&row))).boxed())
     }
 }
