@@ -8,6 +8,9 @@ trait BasicQueries {
 
     #[query = "SELECT ?"]
     async fn get_number(arg: i32) -> (i32,);
+
+    #[query = "SELECT 1 WHERE ?"]
+    async fn get1_conditionally(arg: bool) -> Option<(i32,)>;
 }
 
 #[tokio::test]
@@ -32,4 +35,13 @@ async fn test_get_number() {
     let q = BasicQueries::new(conn);
 
     assert_eq!(q.get_number(12).await.unwrap(), (12,));
+}
+
+#[tokio::test]
+async fn test_get1_conditionally() {
+    let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let q = BasicQueries::new(conn);
+
+    assert_eq!(q.get1_conditionally(true).await.unwrap(), Some((1,)));
+    assert_eq!(q.get1_conditionally(false).await.unwrap(), None);
 }
