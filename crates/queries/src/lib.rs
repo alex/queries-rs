@@ -2,7 +2,21 @@ use futures::StreamExt;
 
 pub use queries_derive::queries;
 
-pub trait FromRows<DB>: Sized
+// All this wizard shit is stolen from pyo3
+const BASE: u32 = 0;
+const VEC: u32 = 1;
+#[doc(hidden)]
+pub trait Probe {
+    const VALUE: u32 = BASE;
+}
+#[doc(hidden)]
+pub struct FromRowsCategory<T>(std::marker::PhantomData<T>);
+impl<T> Probe for FromRowsCategory<T> {}
+impl<T> FromRowsCategory<Vec<T>> {
+    pub const VALUE: u32 = VEC;
+}
+
+pub trait FromRows<DB, const CATEGORY: u32>: Sized
 where
     DB: sqlx::Database,
 {
@@ -11,7 +25,7 @@ where
     ) -> Result<Self, sqlx::Error>;
 }
 
-impl<DB, T> FromRows<DB> for T
+impl<DB, T> FromRows<DB, { BASE }> for T
 where
     DB: sqlx::Database,
     T: for<'a> sqlx::FromRow<'a, DB::Row>,
@@ -30,7 +44,7 @@ where
     }
 }
 
-impl<DB, T> FromRows<DB> for Vec<T>
+impl<DB, T> FromRows<DB, { VEC }> for Vec<T>
 where
     DB: sqlx::Database,
     T: for<'a> sqlx::FromRow<'a, DB::Row>,

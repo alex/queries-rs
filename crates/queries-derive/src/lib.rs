@@ -116,9 +116,16 @@ fn expand_method_impl(
     let result = quote::quote! {
         async fn #name(&self, #args) -> Result<#return_type, sqlx::Error>
         {
+            use queries::Probe;
+
             let q = sqlx::query(#query);
             #(let q = q.bind(#arg_names);)*
-            <#return_type as queries::FromRows<#database>>::from_rows(q.fetch(&self.pool)).await
+            <
+                #return_type as queries::FromRows<
+                    #database,
+                    { queries::FromRowsCategory::<#return_type>::VALUE }
+                >
+            >::from_rows(q.fetch(&self.pool)).await
         }
     };
     Ok(result)
