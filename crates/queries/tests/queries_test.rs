@@ -1,3 +1,5 @@
+use futures::StreamExt;
+
 #[queries::queries(database = sqlx::Sqlite)]
 trait BasicQueries {
     #[query = "SELECT 1"]
@@ -47,4 +49,15 @@ async fn test_get1_conditionally() {
 
     assert_eq!(q.get1_conditionally(true).await.unwrap(), Some((1,)));
     assert_eq!(q.get1_conditionally(false).await.unwrap(), None);
+}
+
+#[tokio::test]
+async fn test_get_numbers_stream() {
+    let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let q = BasicQueries::new(conn);
+
+    let mut stream = q.get_numbers_stream().await.unwrap();
+    assert_eq!(stream.next().await.unwrap().unwrap(), (1,));
+    assert_eq!(stream.next().await.unwrap().unwrap(), (2,));
+    assert_eq!(stream.next().await.unwrap().unwrap(), (3,));
 }
