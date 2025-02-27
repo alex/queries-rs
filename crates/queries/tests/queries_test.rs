@@ -16,6 +16,9 @@ trait BasicQueries {
 
     #[query = "SELECT 1 UNION SELECT 2 UNION SELECT 3"]
     async fn get_numbers_stream() -> futures::stream::BoxStream<sqlx::Result<(i32,)>>;
+
+    #[query = include_str!("get1.sql")]
+    async fn get1_from_file() -> (i32,);
 }
 
 #[tokio::test]
@@ -60,4 +63,12 @@ async fn test_get_numbers_stream() {
     assert_eq!(stream.next().await.unwrap().unwrap(), (1,));
     assert_eq!(stream.next().await.unwrap().unwrap(), (2,));
     assert_eq!(stream.next().await.unwrap().unwrap(), (3,));
+}
+
+#[tokio::test]
+async fn test_get1_from_file() {
+    let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let q = BasicQueries::new(conn);
+
+    assert_eq!(q.get1_from_file().await.unwrap(), (1,));
 }
