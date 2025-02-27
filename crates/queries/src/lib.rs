@@ -28,10 +28,23 @@ pub trait FromRows<'a, DB, const CATEGORY: u32>: Sized
 where
     DB: sqlx::Database,
 {
-    async fn from_rows(
+    fn from_rows(
         rows: futures::stream::BoxStream<'a, Result<DB::Row, sqlx::Error>>,
-    ) -> Result<Self, sqlx::Error>;
+    ) -> impl std::future::Future<Output = Result<Self, sqlx::Error>>;
 }
+
+/// An error indicating that a query which expected 1 (or fewer) rows received
+/// multiple rows.
+#[derive(Debug)]
+pub struct MultipleRowsFound;
+
+impl std::fmt::Display for MultipleRowsFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Multiple rows found when at most one was expected")
+    }
+}
+
+impl std::error::Error for MultipleRowsFound {}
 
 impl<DB, T> FromRows<'_, DB, { BASE }> for T
 where
@@ -45,10 +58,10 @@ where
             return Err(sqlx::Error::RowNotFound);
         };
         if rows.next().await.is_some() {
-            return todo!();
+            return Err(sqlx::Error::Decode(Box::new(MultipleRowsFound)));
         }
 
-        Ok(T::from_row(&row)?)
+        T::from_row(&row)
     }
 }
 
@@ -64,7 +77,7 @@ where
             return Ok(None);
         };
         if rows.next().await.is_some() {
-            return todo!();
+            return Err(sqlx::Error::Decode(Box::new(MultipleRowsFound)));
         }
 
         Ok(Some(T::from_row(&row)?))
