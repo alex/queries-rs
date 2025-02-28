@@ -63,6 +63,7 @@
 //! - `::new()` only accepts `sqlx::Pool`, its not possible to use it with a
 //!   single `sqlx::Connection` (or other `sqlx::Executor`).
 //! - As a result, there's no real support for transactions.
+//! - All query functions are `async`.
 
 use futures::StreamExt;
 
