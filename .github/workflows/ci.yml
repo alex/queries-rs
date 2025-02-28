@@ -1,0 +1,49 @@
+on:
+  pull_request: {}
+  push:
+    branches: main
+
+name: CI
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        RUST:
+          - stable
+          - nightly
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
+        with:
+          toolchain: ${{ matrix.RUST }}
+          components: rustfmt, clippy
+
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        RUST:
+          - stable
+          - beta
+          - nightly
+          # MSRV
+          - "1.85"
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
+        with:
+          toolchain: ${{ matrix.RUST }}
+
+      - run: cargo test --workspace --all-targets
