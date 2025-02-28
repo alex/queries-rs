@@ -1,3 +1,69 @@
+//! `queries` is a library that makes it easy to manage SQL queries in Rust.
+//! Its goal is to provide a straight forward way for developers to write SQL
+//! queries and use them in applications (without any risk of SQL injection).
+//!
+//! It is heavily inspired by [JDBI's SQLobject](https://jdbi.org/#sql-objects).
+//!
+//! `queries` builds on top of `sqlx`.
+//!
+//! # Usage
+//!
+//! The core API is the `#[queries::queries]` proc-macro. For example, you
+//! might use it like:
+//! ```rust,ignore
+//! #[derive(sqlx::FromRow)]
+//! struct User {
+//!     id: u32,
+//!     name: String,
+//! }
+//!
+//! #[queries::queries(database = sqlx::Postgres)]
+//! trait MyQueries {
+//!     #[query = "SELECT * FROM users WHERE id = $1"]
+//!     async fn get_user_by_id(id: u32) -> Option<User>;
+//! }
+//! ```
+//!
+//! You can then use `MyQueries` like so:
+//! ```rust,ignore
+//! let connection_pool = sqlx::PgPool::connect("...").await?;
+//! let q = MyQueries::new(connection_pool);
+//!
+//! let user = q.get_user_by_id(42).await?;
+//! ```
+//!
+//! In short, you can declare the signature for each of your queries in a
+//! trait, and then make use of them.
+//!
+//! All return values are automatically wrapped in a `sqlx::Result<>`.
+//!
+//! # Features
+//!
+//! `queries` should work with any database supported by `sqlx`.
+//!
+//! Query parameters can use any types that `sqlx` supports (i.e., that
+//! implement the `sqlx::Type` and `sqlx::Encode` traits).
+//!
+//! Query return values can be:
+//! - Any type that implements `sqlx::FromRow`.
+//! - `Option<T>` (where `T` implements `sqlx::FromRow`)
+//! - `Vec<T>` (where `T` implements `sqlx::FromRow`)
+//! - `futures::stream::BoxStream<'_, sqlx::Result<T>>` (where `T` implements
+//!   `sqlx::FromRow`)
+//!
+//! For query return types that expect a single row, if the underlying query
+//! returns multiple rows then a `sqlx::Decode` error will be returned with an
+//! inner error of `queries::MultipleRowsFound`.
+//!
+//! # Limitations
+//!
+//! - A given `#[queries::queries]` can only work with a single database (e.g.,
+//!   you can't use `MyQueries` with both PostgreSQL and SQLite, you'd need
+//!   separate declarations).
+//! - `::new()` only accepts `sqlx::Pool`, its not possible to use it with a
+//!   single `sqlx::Connection` (or other `sqlx::Executor`).
+//! - As a result, there's no real support for transactions.
+
 use futures::StreamExt;
 
 pub use queries_derive::queries;
@@ -24,6 +90,7 @@ impl<T> FromRowsCategory<futures::stream::BoxStream<'_, T>> {
     pub const VALUE: u32 = STREAM;
 }
 
+#[doc(hidden)]
 pub trait FromRows<'a, DB, const CATEGORY: u32>: Sized
 where
     DB: sqlx::Database,
