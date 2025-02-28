@@ -5,6 +5,7 @@ members = ["crates/queries", "crates/queries-derive"]
 [workspace.package]
 version = "0.1.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
+description = "A library to make managing SQL queries easy"
 repository = "https://github.com/alex/queries-rs"
 license = "BSD-3-Clause"
 edition = "2024"
