@@ -17,7 +17,7 @@
 //!     name: String,
 //! }
 //!
-//! #[queries::queries(database = sqlx::Postgres)]
+//! #[queries::queries]
 //! trait MyQueries {
 //!     #[query = "SELECT * FROM users WHERE id = $1"]
 //!     async fn get_user_by_id(id: u32) -> Option<User>;
@@ -39,10 +39,11 @@
 //!
 //! # Features
 //!
-//! `queries` should work with any database supported by `sqlx`.
+//! `queries` works with any database supported by `sqlx`.
 //!
 //! Query parameters can use any types that `sqlx` supports (i.e., that
-//! implement the `sqlx::Type` and `sqlx::Encode` traits).
+//! implement the `sqlx::Type` and `sqlx::Encode` traits for the chosen
+//! database).
 //!
 //! Query return values can be:
 //! - Any type that implements `sqlx::FromRow`.
@@ -57,9 +58,6 @@
 //!
 //! # Limitations
 //!
-//! - A given `#[queries::queries]` can only work with a single database (e.g.,
-//!   you can't use `MyQueries` with both PostgreSQL and SQLite, you'd need
-//!   separate declarations).
 //! - `::new()` only accepts `sqlx::Pool`, its not possible to use it with a
 //!   single `sqlx::Connection` (or other `sqlx::Executor`).
 //! - As a result, there's no real support for transactions.
