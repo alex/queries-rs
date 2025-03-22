@@ -27,7 +27,7 @@ trait BasicQueries {
     async fn get1_from_file() -> (i32,);
 
     #[query = "SELECT ?"]
-    async fn get_string(arg: &str) -> (String,);
+    async fn get_string(arg: &'a str) -> (String,);
 
     #[query = "SELECT 1 as id, 'Alex' as name UNION SELECT 2, 'Alice'"]
     async fn get_users() -> Vec<User>;
