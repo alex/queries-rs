@@ -1,5 +1,11 @@
 use futures::StreamExt;
 
+#[derive(sqlx::FromRow, Debug, PartialEq)]
+struct User {
+    id: i32,
+    name: String,
+}
+
 #[queries::queries(database = sqlx::Sqlite)]
 trait BasicQueries {
     #[query = "SELECT 1"]
@@ -19,6 +25,12 @@ trait BasicQueries {
 
     #[query = include_str!("get1.sql")]
     async fn get1_from_file() -> (i32,);
+
+    #[query = "SELECT ?"]
+    async fn get_string(arg: &str) -> (String,);
+
+    #[query = "SELECT 1 as id, 'Alex' as name UNION SELECT 2, 'Alice'"]
+    async fn get_users() -> Vec<User>;
 }
 
 #[tokio::test]
@@ -71,4 +83,32 @@ async fn test_get1_from_file() {
     let q = BasicQueries::new(conn);
 
     assert_eq!(q.get1_from_file().await.unwrap(), (1,));
+}
+
+#[tokio::test]
+async fn test_get_string() {
+    let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let q = BasicQueries::new(conn);
+
+    assert_eq!(q.get_string("abc").await.unwrap(), ("abc".to_string(),));
+}
+
+#[tokio::test]
+async fn test_get_users() {
+    let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let q = BasicQueries::new(conn);
+
+    assert_eq!(
+        q.get_users().await.unwrap(),
+        vec![
+            User {
+                id: 1,
+                name: "Alex".to_string()
+            },
+            User {
+                id: 2,
+                name: "Alice".to_string()
+            }
+        ]
+    );
 }
