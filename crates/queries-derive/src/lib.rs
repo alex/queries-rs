@@ -114,6 +114,9 @@ fn expand_method_impl(fn_def: syn::TraitItemFn) -> syn::Result<proc_macro2::Toke
     let (return_type, lifetimes_removed_return_type) = match &fn_def.sig.output {
         syn::ReturnType::Default => (quote::quote! { () }, quote::quote! { () }),
         syn::ReturnType::Type(_, ty) => {
+            // We rewrite the return type to not have lifetimes, because those
+            // are disallowed in const-generic contexts. Someday we may be able
+            // to get rid of this.
             let removed_lifetimes = remove_lifetimes(ty);
             (
                 ty.into_token_stream(),
