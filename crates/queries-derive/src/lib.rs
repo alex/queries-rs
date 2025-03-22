@@ -111,9 +111,15 @@ fn expand_method_impl(fn_def: syn::TraitItemFn) -> syn::Result<proc_macro2::Toke
             Ok((&i.ident, (*pat.ty).clone()))
         })
         .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
-    let return_type = match &fn_def.sig.output {
-        syn::ReturnType::Default => quote::quote! { () },
-        syn::ReturnType::Type(_, ty) => ty.into_token_stream(),
+    let (return_type, lifetimes_removed_return_type) = match &fn_def.sig.output {
+        syn::ReturnType::Default => (quote::quote! { () }, quote::quote! { () }),
+        syn::ReturnType::Type(_, ty) => {
+            let removed_lifetimes = remove_lifetimes(ty);
+            (
+                ty.into_token_stream(),
+                removed_lifetimes.into_token_stream(),
+            )
+        }
     };
 
     let bounds = arg_types.iter().map(|t| {
@@ -125,7 +131,7 @@ fn expand_method_impl(fn_def: syn::TraitItemFn) -> syn::Result<proc_macro2::Toke
     let result = quote::quote! {
         async fn #name<'a>(&'a self, #args) -> Result<#return_type, sqlx::Error>
         where
-            #return_type: queries::FromRows<'a, DB, { queries::FromRowsCategory::<#return_type>::VALUE }>,
+            #return_type: queries::FromRows<'a, DB, { queries::FromRowsCategory::<#lifetimes_removed_return_type>::VALUE }>,
             #(#bounds)*
         {
             let q = sqlx::query(#query);
@@ -133,11 +139,78 @@ fn expand_method_impl(fn_def: syn::TraitItemFn) -> syn::Result<proc_macro2::Toke
             <
                 #return_type as queries::FromRows<
                     DB,
-                    { queries::FromRowsCategory::<#return_type>::VALUE }
+                    { queries::FromRowsCategory::<#lifetimes_removed_return_type>::VALUE }
                 >
             >::from_rows(q.fetch(&self.pool)).await
         }
     };
 
     Ok(result)
+}
+
+fn remove_lifetimes(ty: &syn::Type) -> syn::Type {
+    match ty {
+        syn::Type::Tuple(tup) => {
+            let elems = tup.elems.iter().map(remove_lifetimes);
+            syn::Type::Tuple(syn::TypeTuple {
+                paren_token: tup.paren_token,
+                elems: syn::punctuated::Punctuated::from_iter(elems),
+            })
+        }
+        syn::Type::Path(path) => {
+            let qself = path.qself.as_ref().map(|q| syn::QSelf {
+                lt_token: q.lt_token,
+                ty: Box::new(remove_lifetimes(&q.ty)),
+                position: q.position,
+                as_token: q.as_token,
+                gt_token: q.gt_token,
+            });
+            syn::Type::Path(syn::TypePath {
+                qself,
+                path: syn::Path {
+                    leading_colon: path.path.leading_colon,
+                    segments: syn::punctuated::Punctuated::from_iter(
+                        path.path.segments.iter().map(|e| syn::PathSegment {
+                            ident: e.ident.clone(),
+                            arguments: match &e.arguments {
+                                syn::PathArguments::None => syn::PathArguments::None,
+                                syn::PathArguments::AngleBracketed(args) => {
+                                    syn::PathArguments::AngleBracketed(
+                                        syn::AngleBracketedGenericArguments {
+                                            colon2_token: args.colon2_token,
+                                            lt_token: args.lt_token,
+                                            args: syn::punctuated::Punctuated::from_iter(
+                                                args.args.iter().map(|a| match a {
+                                                    syn::GenericArgument::Type(t) => {
+                                                        syn::GenericArgument::Type(
+                                                            remove_lifetimes(t),
+                                                        )
+                                                    }
+                                                    syn::GenericArgument::Lifetime(l) => {
+                                                        syn::GenericArgument::Lifetime(
+                                                            syn::Lifetime {
+                                                                apostrophe: l.apostrophe,
+                                                                ident: syn::Ident::new(
+                                                                    "_",
+                                                                    l.ident.span(),
+                                                                ),
+                                                            },
+                                                        )
+                                                    }
+                                                    _ => todo!("a={:?}", a),
+                                                }),
+                                            ),
+                                            gt_token: args.gt_token,
+                                        },
+                                    )
+                                }
+                                _ => todo!("e.arguments={:?}", e.arguments),
+                            },
+                        }),
+                    ),
+                },
+            })
+        }
+        _ => todo!("ty={:?}", ty),
+    }
 }
