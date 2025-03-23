@@ -56,11 +56,13 @@ fn expand(
             pool: sqlx::Pool<DB>,
         }
 
-        impl #name<#database> {
-            pub fn new(pool: sqlx::Pool<#database>) -> Self {
+        impl<DB: sqlx::Database> #name<DB> {
+            pub fn new(pool: sqlx::Pool<DB>) -> Self {
                 Self { pool }
             }
+        }
 
+        impl #name<#database> {
             #(#method_impls)*
         }
     };
