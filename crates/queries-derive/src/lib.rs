@@ -52,17 +52,15 @@ fn expand(
     let name = input.ident;
     let vis = input.vis;
     let result = quote::quote! {
-        #vis struct #name {
-            pool: sqlx::Pool<#database>,
+        #vis struct #name<DB: sqlx::Database> {
+            pool: sqlx::Pool<DB>,
         }
 
-        impl #name {
+        impl #name<#database> {
             pub fn new(pool: sqlx::Pool<#database>) -> Self {
                 Self { pool }
             }
-        }
 
-        impl #name {
             #(#method_impls)*
         }
     };
