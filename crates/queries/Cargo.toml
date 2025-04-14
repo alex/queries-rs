@@ -11,8 +11,8 @@ rust-version.workspace = true
 [dependencies]
 futures = "0.3.31"
 queries-derive = { version = "0.1.0", path = "../queries-derive" }
-sqlx = "0.8.3"
+sqlx = "0.8.4"
 
 [dev-dependencies]
 tokio = { version = "1.44.2", features = ["rt", "macros"] }
-sqlx = { version = "0.8.3", features = ["sqlite", "runtime-tokio"] }
+sqlx = { version = "0.8.4", features = ["sqlite", "runtime-tokio"] }
