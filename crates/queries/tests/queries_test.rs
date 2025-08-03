@@ -6,7 +6,7 @@ struct User {
     name: String,
 }
 
-#[queries::queries(database = sqlx::Sqlite)]
+#[queries::queries]
 trait BasicQueries {
     #[query = "SELECT 1"]
     async fn get1() -> (i32,);
@@ -21,13 +21,13 @@ trait BasicQueries {
     async fn get1_conditionally(arg: bool) -> Option<(i32,)>;
 
     #[query = "SELECT 1 UNION SELECT 2 UNION SELECT 3"]
-    async fn get_numbers_stream() -> futures::stream::BoxStream<sqlx::Result<(i32,)>>;
+    async fn get_numbers_stream() -> futures::stream::BoxStream<'a, sqlx::Result<(i32,)>>;
 
     #[query = include_str!("get1.sql")]
     async fn get1_from_file() -> (i32,);
 
     #[query = "SELECT ?"]
-    async fn get_string(arg: &str) -> (String,);
+    async fn get_string(arg: &'a str) -> (String,);
 
     #[query = "SELECT 1 as id, 'Alex' as name UNION SELECT 2, 'Alice'"]
     async fn get_users() -> Vec<User>;
