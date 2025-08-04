@@ -38,7 +38,9 @@ fn expand(
         ));
     }
 
-    let mut method_impls = vec![];
+    let mut pool_method_impls = vec![];
+    let mut conn_method_impls = vec![];
+
     for item in input.items {
         let syn::TraitItem::Fn(fn_def) = item else {
             return Err(syn::Error::new_spanned(
@@ -46,32 +48,42 @@ fn expand(
                 "Only methods are allowed in the trait definition",
             ));
         };
-        method_impls.push(expand_method_impl(&database, fn_def)?);
+        pool_method_impls.push(expand_pool_method_impl(&database, fn_def.clone())?);
+        conn_method_impls.push(expand_conn_method_impl(&database, fn_def)?);
     }
 
     let name = input.ident;
     let vis = input.vis;
+
     let result = quote::quote! {
-        #vis struct #name<DB: sqlx::Database> {
-            pool: sqlx::Pool<DB>,
+        #vis struct #name<E> {
+            executor: E,
         }
 
-        impl<DB: sqlx::Database> #name<DB> {
-            pub fn new(pool: sqlx::Pool<DB>) -> Self {
-                Self { pool }
+        impl #name<sqlx::Pool<#database>> {
+            pub fn from_pool(pool: sqlx::Pool<#database>) -> Self {
+                Self { executor: pool }
             }
+
+            #(#pool_method_impls)*
         }
 
-        impl #name<#database> {
-            #(#method_impls)*
+        impl<'a> #name<&'a mut <#database as sqlx::Database>::Connection> {
+            pub fn from_conn(conn: &'a mut <#database as sqlx::Database>::Connection) -> Self {
+                Self { executor: conn }
+            }
+
+            #(#conn_method_impls)*
         }
     };
     Ok(result)
 }
 
-fn expand_method_impl(
+fn expand_method_impl_with_self(
     database: &syn::Expr,
     fn_def: syn::TraitItemFn,
+    self_param: proc_macro2::TokenStream,
+    executor_ref: proc_macro2::TokenStream,
 ) -> syn::Result<proc_macro2::TokenStream> {
     if fn_def.default.is_some() {
         return Err(syn::Error::new_spanned(
@@ -114,7 +126,7 @@ fn expand_method_impl(
     };
 
     let result = quote::quote! {
-        async fn #name(&self, #args) -> Result<#return_type, sqlx::Error>
+        async fn #name(#self_param, #args) -> Result<#return_type, sqlx::Error>
         {
             use queries::Probe;
 
@@ -125,8 +137,32 @@ fn expand_method_impl(
                     #database,
                     { queries::FromRowsCategory::<#return_type>::VALUE }
                 >
-            >::from_rows(q.fetch(&self.pool)).await
+            >::from_rows(q.fetch(#executor_ref)).await
         }
     };
     Ok(result)
+}
+
+fn expand_pool_method_impl(
+    database: &syn::Expr,
+    fn_def: syn::TraitItemFn,
+) -> syn::Result<proc_macro2::TokenStream> {
+    expand_method_impl_with_self(
+        database,
+        fn_def,
+        quote::quote! { &self },
+        quote::quote! { &self.executor },
+    )
+}
+
+fn expand_conn_method_impl(
+    database: &syn::Expr,
+    fn_def: syn::TraitItemFn,
+) -> syn::Result<proc_macro2::TokenStream> {
+    expand_method_impl_with_self(
+        database,
+        fn_def,
+        quote::quote! { &mut self },
+        quote::quote! { &mut *self.executor },
+    )
 }

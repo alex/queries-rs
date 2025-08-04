@@ -1,4 +1,5 @@
 use futures::StreamExt;
+use sqlx::Connection;
 
 #[derive(sqlx::FromRow, Debug, PartialEq)]
 struct User {
@@ -36,7 +37,7 @@ trait BasicQueries {
 #[tokio::test]
 async fn test_get1() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(q.get1().await.unwrap(), (1,));
 }
@@ -44,7 +45,7 @@ async fn test_get1() {
 #[tokio::test]
 async fn test_get_numbers() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(q.get_numbers().await.unwrap(), vec![(1,), (2,), (3,)]);
 }
@@ -52,7 +53,7 @@ async fn test_get_numbers() {
 #[tokio::test]
 async fn test_get_number() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(q.get_number(12).await.unwrap(), (12,));
 }
@@ -60,7 +61,7 @@ async fn test_get_number() {
 #[tokio::test]
 async fn test_get1_conditionally() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(q.get1_conditionally(true).await.unwrap(), Some((1,)));
     assert_eq!(q.get1_conditionally(false).await.unwrap(), None);
@@ -69,7 +70,7 @@ async fn test_get1_conditionally() {
 #[tokio::test]
 async fn test_get_numbers_stream() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     let mut stream = q.get_numbers_stream().await.unwrap();
     assert_eq!(stream.next().await.unwrap().unwrap(), (1,));
@@ -80,7 +81,7 @@ async fn test_get_numbers_stream() {
 #[tokio::test]
 async fn test_get1_from_file() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(q.get1_from_file().await.unwrap(), (1,));
 }
@@ -88,7 +89,7 @@ async fn test_get1_from_file() {
 #[tokio::test]
 async fn test_get_string() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(q.get_string("abc").await.unwrap(), ("abc".to_string(),));
 }
@@ -96,7 +97,7 @@ async fn test_get_string() {
 #[tokio::test]
 async fn test_get_users() {
     let conn = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let q = BasicQueries::new(conn);
+    let q = BasicQueries::from_pool(conn);
 
     assert_eq!(
         q.get_users().await.unwrap(),
@@ -111,4 +112,14 @@ async fn test_get_users() {
             }
         ]
     );
+}
+
+#[tokio::test]
+async fn test_from_conn() {
+    let mut conn = sqlx::SqliteConnection::connect("sqlite::memory:")
+        .await
+        .unwrap();
+    let mut q = BasicQueries::from_conn(&mut conn);
+
+    assert_eq!(q.get1().await.unwrap(), (1,));
 }
