@@ -65,6 +65,11 @@ fn expand(
                 Self { executor: pool }
             }
 
+            pub async fn begin(&self) -> sqlx::Result<#name<sqlx::Transaction<'_, #database>>> {
+                let tx = self.executor.begin().await?;
+                Ok(#name::from_tx(tx))
+            }
+
             #(#pool_method_impls)*
         }
 

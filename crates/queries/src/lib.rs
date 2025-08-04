@@ -32,10 +32,10 @@
 //! let user = q.get_user_by_id(42).await?;
 //!
 //! // Using a transaction
-//! let tx = connection_pool.begin().await?;
-//! let mut q = MyQueries::from_tx(tx);
-//! let user = q.get_user_by_id(42).await?;
-//! q.commit().await?; // or q.rollback().await?
+//! // If you already have a tx, you can use `MyQueries::from_tx(tx)`
+//! let mut tx_q = q.begin().await?;
+//! let user = tx_q.get_user_by_id(42).await?;
+//! tx_q.commit().await?; // or tx_q.rollback().await?
 //! ```
 //!
 //! In short, you can declare the signature for each of your queries in a
@@ -48,7 +48,9 @@
 //! `queries` should work with any database supported by `sqlx`.
 //!
 //! `queries` supports connection pools (`from_pool()`) and transactions
-//! (`from_tx()`). Transactions provide `commit()` and `rollback()` methods.
+//! (`from_tx()`). You can also start a transaction from a pool-based queries
+//! instance using the `begin()` method. Transactions provide `commit()` and
+//! `rollback()` methods.
 //!
 //! Query parameters can use any types that `sqlx` supports (i.e., that
 //! implement the `sqlx::Type` and `sqlx::Encode` traits).

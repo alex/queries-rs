@@ -116,13 +116,13 @@ async fn test_get_users() {
 #[tokio::test]
 async fn test_tx() {
     let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let tx = pool.begin().await.unwrap();
+    let q = BasicQueries::from_pool(pool);
 
-    let mut q = BasicQueries::from_tx(tx);
-    let result1 = q.get1().await.unwrap();
-    let result2 = q.get_number(42).await.unwrap();
+    let mut tx_q = q.begin().await.unwrap();
+    let result1 = tx_q.get1().await.unwrap();
+    let result2 = tx_q.get_number(42).await.unwrap();
     assert_eq!(result1, (1,));
     assert_eq!(result2, (42,));
 
-    q.commit().await.unwrap();
+    tx_q.commit().await.unwrap();
 }
