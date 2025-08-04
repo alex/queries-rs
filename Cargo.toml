@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/queries", "crates/queries-derive"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 description = "A library to make managing SQL queries easy"
 repository = "https://github.com/alex/queries-rs"
