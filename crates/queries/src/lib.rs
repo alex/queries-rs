@@ -24,18 +24,18 @@
 //! }
 //! ```
 //!
-//! You can then use `MyQueries` with either a connection pool or individual
-//! connection:
+//! You can then use `MyQueries` with either a connection pool or transaction:
 //! ```rust,ignore
 //! // Using a connection pool
 //! let connection_pool = sqlx::PgPool::connect("...").await?;
 //! let q = MyQueries::from_pool(connection_pool);
 //! let user = q.get_user_by_id(42).await?;
 //!
-//! // Using an individual connection
-//! let mut conn = sqlx::PgConnection::connect("...").await?;
-//! let mut q = MyQueries::from_conn(&mut conn);
+//! // Using a transaction
+//! let tx = connection_pool.begin().await?;
+//! let mut q = MyQueries::from_tx(tx);
 //! let user = q.get_user_by_id(42).await?;
+//! q.commit().await?; // or q.rollback().await?
 //! ```
 //!
 //! In short, you can declare the signature for each of your queries in a
@@ -47,8 +47,8 @@
 //!
 //! `queries` should work with any database supported by `sqlx`.
 //!
-//! `queries` supports both connection pools (`from_pool()`) and individual
-//! connections (`from_conn()`).
+//! `queries` supports connection pools (`from_pool()`) and transactions
+//! (`from_tx()`). Transactions provide `commit()` and `rollback()` methods.
 //!
 //! Query parameters can use any types that `sqlx` supports (i.e., that
 //! implement the `sqlx::Type` and `sqlx::Encode` traits).
@@ -70,7 +70,6 @@
 //!   you can't use `MyQueries` with both PostgreSQL and SQLite, you'd need
 //!   separate declarations).
 //! - All query functions are `async`.
-//! - Transaction support is not yet implemented.
 
 use futures::StreamExt;
 

@@ -1,5 +1,4 @@
 use futures::StreamExt;
-use sqlx::Connection;
 
 #[derive(sqlx::FromRow, Debug, PartialEq)]
 struct User {
@@ -115,11 +114,15 @@ async fn test_get_users() {
 }
 
 #[tokio::test]
-async fn test_from_conn() {
-    let mut conn = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
-    let mut q = BasicQueries::from_conn(&mut conn);
+async fn test_tx() {
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let tx = pool.begin().await.unwrap();
 
-    assert_eq!(q.get1().await.unwrap(), (1,));
+    let mut q = BasicQueries::from_tx(tx);
+    let result1 = q.get1().await.unwrap();
+    let result2 = q.get_number(42).await.unwrap();
+    assert_eq!(result1, (1,));
+    assert_eq!(result2, (42,));
+
+    q.commit().await.unwrap();
 }

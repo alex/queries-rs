@@ -39,7 +39,7 @@ fn expand(
     }
 
     let mut pool_method_impls = vec![];
-    let mut conn_method_impls = vec![];
+    let mut tx_method_impls = vec![];
 
     for item in input.items {
         let syn::TraitItem::Fn(fn_def) = item else {
@@ -49,7 +49,7 @@ fn expand(
             ));
         };
         pool_method_impls.push(expand_pool_method_impl(&database, fn_def.clone())?);
-        conn_method_impls.push(expand_conn_method_impl(&database, fn_def)?);
+        tx_method_impls.push(expand_tx_method_impl(&database, fn_def)?);
     }
 
     let name = input.ident;
@@ -68,12 +68,20 @@ fn expand(
             #(#pool_method_impls)*
         }
 
-        impl<'a> #name<&'a mut <#database as sqlx::Database>::Connection> {
-            pub fn from_conn(conn: &'a mut <#database as sqlx::Database>::Connection) -> Self {
-                Self { executor: conn }
+        impl<'a> #name<sqlx::Transaction<'a, #database>> {
+            pub fn from_tx(tx: sqlx::Transaction<'a, #database>) -> Self {
+                Self { executor: tx }
             }
 
-            #(#conn_method_impls)*
+            pub async fn commit(self) -> sqlx::Result<()> {
+                self.executor.commit().await
+            }
+
+            pub async fn rollback(self) -> sqlx::Result<()> {
+                self.executor.rollback().await
+            }
+
+            #(#tx_method_impls)*
         }
     };
     Ok(result)
@@ -155,7 +163,7 @@ fn expand_pool_method_impl(
     )
 }
 
-fn expand_conn_method_impl(
+fn expand_tx_method_impl(
     database: &syn::Expr,
     fn_def: syn::TraitItemFn,
 ) -> syn::Result<proc_macro2::TokenStream> {
