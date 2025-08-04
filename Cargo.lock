@@ -861,7 +861,7 @@ dependencies = [
 
 [[package]]
 name = "queries"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "futures",
  "queries-derive",
@@ -871,7 +871,7 @@ dependencies = [
 
 [[package]]
 name = "queries-derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
